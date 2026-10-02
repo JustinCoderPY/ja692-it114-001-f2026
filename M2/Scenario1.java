@@ -21,8 +21,21 @@ public class Scenario1 extends BaseClass {
         // I added the first line so that I can prevent the outpouts getting pre-commas
 
         // Start Solution Edits
-       
+        boolean first = true;
 
+        for (int num : arr) {
+            if (num % 2 != 0) {
+                if(!first) {
+                    System.out.print(", ");
+                }
+           
+            System.out.print(num);
+            first = false;    
+            }
+
+
+           
+        }
         // End Solution Edits
         System.out.println("");
         System.out.println("______________________________________");
