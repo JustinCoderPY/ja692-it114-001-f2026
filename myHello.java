@@ -1,5 +1,4 @@
-package M2.Other;
-public class Hello {
+public class myHello {
     public static void main(String[] args) {
             System.out.println("Hello, World!");
     }
