@@ -14,9 +14,12 @@ public class Scenario1 extends BaseClass {
         //  Configure inline suggestions to "Disabled Inline Suggestions" (or similar) when writing code for this problem.
 
         // Challenge 1: From each passed in array, print odd values only in a single line separated by commas and a space after each comma (should not have leading or trailing commas)
-        // Step 1: sketch out plan using comments (include ucid and date)
-        // Step 2: Add/commit your outline of comments (required for full credit)
-        // Step 3: Add code to solve the problem (add/commit as needed)
+        //ja692
+        //10/2/2026
+        //Solution to this code: We need to create a loop through array and print only odd nums
+        // I have to use % to simplify to print out those values
+        // I added the first line so that I can prevent the outpouts getting pre-commas
+
         // Start Solution Edits
        
 
