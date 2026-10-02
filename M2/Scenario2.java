@@ -18,19 +18,25 @@ public class Scenario2 extends BaseClass {
 
         // Challenge 1: Sum all the values of the passed in array and assign to the `total` variable
         // Challenge 2: Have the sum (total) be represented as a number with exactly 2 decimal places (similar to currency), assign to `modifiedTotal` variable
-        // Example: 0.1 would be shown as 0.10, 1 would be shown as 1.00, 0.011 as 0.01, etc
-        // Step 1: sketch out plan using comments (include ucid and date)
-        // Step 2: Add/commit your outline of comments (required for full credit)
-        // Step 3: Add code to solve the problem (add/commit as needed)
+        //ja692
+        //10/2/26 
+        //Similar to the first one, we to create a loop and then add the value to total
+        //Note: All numbers need to be rounded by 2 decimal points
+
         double total = 0;
         // Start Solution Edits
         // Solve Challenge 1 here
+
+        for (double num : arr) {
+            total += num;
+        }
        
-      
+       
         // Solve Challenge 2 here
-        Object modifiedTotal = "?";
+        Object modifiedTotal= String.format( "%.2f", total);
         
         // End Solution Edits
+
         printScenario2Output(total, modifiedTotal);
     }
 
