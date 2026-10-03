@@ -26,15 +26,34 @@ public class Scenario4 extends BaseClass {
         // Assign result to 'placeholderForMiddleCharacters'
         // If not enough characters in a word, instead assign "Not enough characters" to `placeholderForMiddleCharacters`
  
-        // Step 1: sketch out plan using comments (include ucid and date)
-        // Step 2: Add/commit your outline of comments (required for full credit)
-        // Step 3: Add code to solve the problem (add/commit as needed)
+        // ja692, 10/2/26
+        // Removing special characters while also keeping the letters, numbers and spaces intact
+        // Remove extra spaces and then after, captializing each first letter.
         String placeholderForModifiedPhrase = "";
         String placeholderForMiddleCharacters = "";
         
         for(int i = 0; i <arr.length; i++){
             // Start Solution Edits
-            
+            String result = "";
+            boolean startOfLetter = true;
+
+            for (int j = 0; j < arr[i].length(); j++) {
+                char c = arr[i].charAt(j);
+                if (Character.isLetterOrDigit(c)){
+                    if(startOfLetter){
+                        result += Character.toUpperCase(c);
+                    } else {
+                    result +=Character.toLowerCase(c);
+                    }
+                    startOfLetter = false;
+                }else if (c == ' ' && !startOfLetter) {
+                    result += " ";
+                    startOfLetter = true;
+                }
+            }
+            placeholderForModifiedPhrase = result.trim();
+
+
             // End Solution Edits
             System.out.println(String.format("Index[%d] \"%s\" | Middle: \"%s\"",i, placeholderForModifiedPhrase, placeholderForMiddleCharacters));
         }
