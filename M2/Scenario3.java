@@ -16,11 +16,32 @@ public class Scenario3 extends BaseClass {
 
         // Challenge 1: Make each value positive
         // Challenge 2: Convert the values back to their original data type and assign it to the proper slot in the `output` array
-        // Step 1: sketch out plan using comments (include ucid and date)
-        // Step 2: Add/commit your outline of comments (required for full credit)
-        // Step 3: Add code to solve the problem (add/commit as needed)
+        //
+        //ja692
+        //To solve this problem, it's a little tricky. But I would basically need to loop through each value and see their datatype 
+        //make the values positive, and then keep in the output using that same type. 
         Object[] output = new Object[arr.length];
         // Start Solution Edits
+        for (int i = 0; i < arr.length; i++){
+            if (arr[i] instanceof Integer){
+                int value = (Integer) arr[i];
+                output [i] = Math.abs(value);
+            } else if (arr [i] instanceof Double) {
+                double value = (Double) arr [i];
+                output[i] = Math.abs(value);
+            } else if (arr [i] instanceof Float) {
+                float value = (Float) arr [i];
+                output[i] = Math.abs(value);
+            } else if (arr [i] instanceof String) {
+                String text = (String) arr [i];
+
+                if (text.startsWith("-")) {
+                    text= text.substring(1);
+                }
+
+                output[i] = text;
+            }
+        }
         
 
         // End Solution Edits
