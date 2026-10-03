@@ -18,6 +18,7 @@ public class Scenario3 extends BaseClass {
         // Challenge 2: Convert the values back to their original data type and assign it to the proper slot in the `output` array
         //
         //ja692
+        //10/2/26
         //To solve this problem, it's a little tricky. But I would basically need to loop through each value and see their datatype 
         //make the values positive, and then keep in the output using that same type. 
         Object[] output = new Object[arr.length];
