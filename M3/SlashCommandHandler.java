@@ -17,12 +17,15 @@ Challenge 2: Simple Slash Command Handler
 import java.util.Scanner;
 
 public class SlashCommandHandler extends BaseClass {
-    private static String ucid = "mt85"; // <-- change to your UCID
+    private static String ucid = "ja692"; // <-- change to your UCID
 
     public static void main(String[] args) {
         printHeader(ucid, 2, "Objective: Implement a simple slash command parser.");
 
         Scanner scanner = new Scanner(System.in);
+        // UCID: ja692
+        // Date: 10/09/2026
+        //Plan: Needs to understand the specific slash commands, then check to see if it was used, and then put in the correct response or error from those commands. Also needs to handle invalid commands.
 
         // Can define any variables needed here
 

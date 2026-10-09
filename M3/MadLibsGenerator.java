@@ -18,7 +18,7 @@ Challenge 3: Mad Libs Generator (Randomized Stories)
 
 public class MadLibsGenerator extends BaseClass {
     private static final String STORIES_FOLDER = "M3/stories";
-    private static String ucid = "mt85"; // <-- change to your ucid
+    private static String ucid = "ja692"; // <-- change to your ucid
 
     public static void main(String[] args) {
         printHeader(ucid, 3,
@@ -34,6 +34,11 @@ public class MadLibsGenerator extends BaseClass {
             return;
         }
         List<String> lines = new ArrayList<>();
+        // UCID: ja692
+        // Date: 10/09/2026
+        //Plan: Need to read the stories, then ask the users the words needed, and then replace the placeholders to finish the story. 
+
+
         // Start edits
 
         // load a random story file

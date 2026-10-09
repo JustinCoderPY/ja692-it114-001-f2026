@@ -12,7 +12,7 @@ Challenge 1: Command-Line Calculator
 */
 
 public class CommandLineCalculator extends BaseClass {
-    private static String ucid = "mt85"; // <-- change to your ucid
+    private static String ucid = "ja692"; // <-- change to your ucid
 
     public static void main(String[] args) {
         printHeader(ucid, 1, "Objective: Implement a calculator using command-line arguments.");
@@ -25,6 +25,10 @@ public class CommandLineCalculator extends BaseClass {
 
         try {
             System.out.println("Calculating result...");
+            // UCID: ja692
+            // Date: 10/09/2026
+            //Plan: Need to print out two numbers and an operator from the command line, then use conditional statements for addition or subtraction, and then handle  invalid input.
+            
             // extract the equation (format is <num1> <operator> <num2>)
 
             // check if operator is addition or subtraction
