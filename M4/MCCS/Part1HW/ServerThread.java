@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Consumer;
+import M4.MCCS.Part1.Constants;
 
 import M4.MCCS.Part1HW.TextFX.Color;
 
@@ -172,6 +173,9 @@ public class ServerThread extends Thread {
                 // join remaining segments back into the text to reverse
                 String relevantText = String.join(" ", Arrays.copyOfRange(commandData, 2, commandData.length));
                 server.handleReverseText(this, relevantText);
+                return true;
+            case "flip":
+                server.handleFlip(this);
                 return true;
             default:
                 return false;

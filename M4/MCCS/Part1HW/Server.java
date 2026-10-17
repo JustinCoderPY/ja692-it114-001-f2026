@@ -114,6 +114,16 @@ public class Server {
         broadcast(sender, text);
     }
 
+     /** Flips a coin and broadcasts the result. */
+    protected synchronized void handleFlip(ServerThread sender) {
+        String result = Math.random() < 0.5 ? "Heads" : "Tails";
+        
+        String message = String.format("User[%s] flipped a coin: %s", sender.getClientId(), result);
+        
+        broadcast(null, message);
+
+    }
+
     public static void main(String[] args) {
         System.out.println("Server Starting");
         Server server = new Server();

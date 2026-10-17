@@ -9,6 +9,7 @@ import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import M4.MCCS.Part1.Constants;
 
 import M4.MCCS.Part1HW.TextFX.Color;
 
@@ -48,7 +49,8 @@ public class Client {
         DISCONNECT("/disconnect"),
         QUIT("/quit"),
         USERS("/users"),
-        REVERSE("/reverse");
+        REVERSE("/reverse"),
+        FLIP ( "/flip");
 
         private final String trigger;
 
@@ -143,6 +145,9 @@ public class Client {
                 // strip "/reverse" prefix and send remainder as the text to reverse
                 String reverseText = text.replace("/reverse", "").trim();
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "reverse", reverseText));
+                return true;
+            case FLIP:
+                sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "flip"));
                 return true;
             default:
                 return false;
