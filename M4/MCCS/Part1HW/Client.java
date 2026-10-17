@@ -50,7 +50,8 @@ public class Client {
         QUIT("/quit"),
         USERS("/users"),
         REVERSE("/reverse"),
-        FLIP ( "/flip");
+        FLIP ( "/flip"),
+        PM("/pm");
 
         private final String trigger;
 
@@ -149,6 +150,18 @@ public class Client {
             case FLIP:
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "flip"));
                 return true;
+            case PM:
+                String pmText = text.replaceFirst("(?i)^/pm\\s*", "").trim();
+                String[] pmParts = pmText.split("\\s+", 2);
+
+                if (pmParts.length < 2) {
+                    System.out.println("Usage: /pm <userId> <message>");
+                    return true;
+                } 
+
+                sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "pm", pmParts[0], pmParts[1]));
+                return true;
+
             default:
                 return false;
         }

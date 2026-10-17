@@ -177,6 +177,23 @@ public class ServerThread extends Thread {
             case "flip":
                 server.handleFlip(this);
                 return true;
+            case "pm":
+                if (commandData.length < 4) { 
+                    sendToClient("Usage: /pm <userId> <message>");
+                    return true;
+                }
+
+                try {
+                    long targetId = Long.parseLong(commandData[2].trim());
+
+                    String messageText = String.join(",", Arrays.copyOfRange(commandData, 3, commandData.length));
+
+                    server.handlePrivateMessage(this, targetId, messageText);
+                } catch (NumberFormatException e) {
+                    sendToClient("Not a vlaid userId: ");
+                }
+                return true;
+
             default:
                 return false;
         }

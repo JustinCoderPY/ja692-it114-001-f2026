@@ -124,6 +124,24 @@ public class Server {
 
     }
 
+    protected synchronized void handlePrivateMessage(ServerThread sender, long targetId, String message) {
+        ServerThread target = connectedClients.get(targetId);
+
+        if (target == null) {
+            sender.sendToClient("User[" + targetId + "] is not connected");
+            return;
+        }
+
+        String formatted = String.format ("PM from User[%s]: %s", sender.getClientId(), message);
+
+        sender.sendToClient(formatted);
+
+        if (target != sender) {
+            target.sendToClient(formatted);
+        }
+        
+    }
+
     public static void main(String[] args) {
         System.out.println("Server Starting");
         Server server = new Server();
