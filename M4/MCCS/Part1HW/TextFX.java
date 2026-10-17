@@ -7,6 +7,21 @@ package M4.MCCS.Part1HW;
  * chatroom projects.
  * </p>
  */
+
+/*
+ * UCID: ja692
+ * Date: 10/17/2026
+ *
+ * Module 4 Plan:
+ * - Keep the existing terminal color utility while also adding the
+ *   /flip, /pm, and /shuffle challenges.
+ * - Use the already available color formatting where appropriate for server or client
+ *   output without changing the main purpose of this class.
+ *
+ * No major command-processing changes are planned for TextFX.
+ */
+
+
 public abstract class TextFX {
 
     /**

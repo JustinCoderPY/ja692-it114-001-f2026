@@ -12,6 +12,22 @@ import java.util.regex.Pattern;
 
 import M4.MCCS.Part1HW.TextFX.Color;
 
+/*
+ * UCID: ja692
+ * Date: 10/17/2026
+ *
+ * Module 4 Plan:
+ * - /flip: Add a command that sends a flip request to  server.
+ * - /pm: Add a command that separates the  user and message,
+ *   then sends the private-message request to the server.
+ * - /shuffle: Add a command that sends the values or text
+ *   to the server so they can be mixed.
+ *
+ * The client will recognize the new commands, collect their arguments,
+ * and send them using the existing command format.
+ */
+
+
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
  */

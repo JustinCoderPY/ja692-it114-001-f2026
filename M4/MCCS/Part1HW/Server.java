@@ -5,6 +5,22 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
+/*
+ * UCID: ja692
+ * Date: 10/17/2026
+ *
+ * Module 4 Plan:
+ * - /flip: Create a handler here so that it produces the flip result and
+ *   sends the result back through the client communication system.
+ * - /pm: Create a handler that finds the requested connected user and sends
+ *   the message only to the intended client rahter than showing it to everyone.
+ * - /shuffle: Create a handler that randomizes the input and sends
+ *   the shuffled result back through the server.
+ *
+ * The new features will reuse the existing connectedClients map, message
+ * routing methods, and sendToClient() behavior.
+ */
+
 public class Server {
     private int port = 3000;
     // thread-safe map; multiple ServerThreads may call Server methods concurrently

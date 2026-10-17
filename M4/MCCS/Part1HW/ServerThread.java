@@ -10,6 +10,20 @@ import java.util.function.Consumer;
 
 import M4.MCCS.Part1HW.TextFX.Color;
 
+/*
+ * UCID: ja692
+ * Date: 10/17/2026
+ *
+ * Module 4 Plan:
+ * - Extend the existing command-processing, which helps recognize the /flip,
+ *   /pm, and /shuffle requests received from the client.
+ * - Read any command arguments that were included with the request.
+ * - Pass the command and its needed data to the appropriate Server handler.
+ *
+ * ServerThread will continue handling the clients incoming message while
+ * Server performs the main command actions and routing.
+ */
+
 /**
  * Server-side handler for one connected client.
  * Each client gets its own thread so multiple clients can be served concurrently.
