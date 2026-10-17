@@ -194,6 +194,11 @@ public class ServerThread extends Thread {
                 }
                 return true;
 
+            case "shuffle":
+                String shuffleMessage = String.join(",", Arrays.copyOfRange(commandData, 2, commandData.length));
+                server.handleShuffle(this, shuffleMessage);
+                return true;
+                
             default:
                 return false;
         }

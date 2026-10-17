@@ -51,7 +51,8 @@ public class Client {
         USERS("/users"),
         REVERSE("/reverse"),
         FLIP ( "/flip"),
-        PM("/pm");
+        PM("/pm"),
+        SHUFFLE("/shuffle");
 
         private final String trigger;
 
@@ -161,6 +162,17 @@ public class Client {
 
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "pm", pmParts[0], pmParts[1]));
                 return true;
+            case SHUFFLE:
+                String shuffleText = text.replaceFirst("(?i)^/shuffle\\s*", "").trim();
+                
+                if (shuffleText.isEmpty()) {
+                    System.out.println("Usage: /shuffle <message>");
+                    return true;
+                }
+
+                sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "shuffle", shuffleText));
+                return true;
+            
 
             default:
                 return false;

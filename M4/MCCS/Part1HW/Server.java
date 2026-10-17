@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /*
  * UCID: ja692
@@ -140,6 +143,27 @@ public class Server {
             target.sendToClient(formatted);
         }
         
+    }
+
+    protected synchronized void handleShuffle(ServerThread sender, String message) { 
+        List<Character> characters = new ArrayList<>();
+
+        for (char c : message.toCharArray()) {
+            characters.add(c);
+        }
+
+        Collections.shuffle(characters);
+
+        StringBuilder shuffled = new StringBuilder();
+
+        for (char c : characters) {
+            shuffled.append(c);
+        }
+
+        String result = String.format( "Shuffled from User[%s] message: %s", sender.getClientId(), shuffled.toString());
+
+        broadcast(null, result);
+
     }
 
     public static void main(String[] args) {
