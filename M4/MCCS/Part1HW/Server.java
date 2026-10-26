@@ -1,0 +1,181 @@
+package M4.MCCS.Part1HW;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/*
+ * UCID: ja692
+ * Date: 10/17/2026
+ *
+ * Module 4 Plan:
+ * - /flip: Create a handler here so that it produces the flip result and
+ *   sends the result back through the client communication system.
+ * - /pm: Create a handler that finds the requested connected user and sends
+ *   the message only to the intended client rahter than showing it to everyone.
+ * - /shuffle: Create a handler that randomizes the input and sends
+ *   the shuffled result back through the server.
+ *
+ * The new features will reuse the existing connectedClients map, message
+ * routing methods, and sendToClient() behavior.
+ */
+
+public class Server {
+    private int port = 3000;
+    // thread-safe map; multiple ServerThreads may call Server methods concurrently
+    private final ConcurrentHashMap<Long, ServerThread> connectedClients = new ConcurrentHashMap<>();
+    private boolean isRunning = true;
+
+    private void start(int port) {
+        this.port = port;
+        System.out.println("Listening on port " + this.port);
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            while (isRunning) {
+                System.out.println("Waiting for next client");
+                Socket incomingClient = serverSocket.accept(); // blocks until a client connects
+                System.out.println("Client connected");
+                // third arg is a callback; ServerThread calls it once streams are open and it is ready
+                ServerThread serverThread = new ServerThread(incomingClient, this, this::onServerThreadInitialized);
+                serverThread.start();
+                // not added to connectedClients here; that happens inside the callback after setup
+            }
+        } catch (IOException e) {
+            System.err.println("Error accepting connection");
+            e.printStackTrace();
+        } finally {
+            System.out.println("Server socket closed");
+        }
+    }
+
+    /**
+     * Callback from ServerThread once streams are open and it is ready to send/receive.
+     * Registers the client and announces their arrival.
+     */
+    private synchronized void onServerThreadInitialized(ServerThread serverThread) {
+        connectedClients.put(serverThread.getClientId(), serverThread);
+        broadcast(null, String.format("*User[%s] connected*", serverThread.getClientId()));
+    }
+
+    /**
+     * Internal disconnect: stops the thread, removes it from the map, and broadcasts a notice.
+     * Used by handleDisconnect() and can be reused for server-side actions like kicks or timeouts.
+     */
+    private synchronized void disconnect(ServerThread serverThread) {
+        serverThread.disconnect();
+        connectedClients.remove(serverThread.getClientId());
+        broadcast(null, String.format("User[%s] disconnected", serverThread.getClientId()));
+    }
+
+    /**
+     * Sends a message to all connected clients.
+     * Any client whose send fails is removed from the map.
+     */
+    private synchronized void broadcast(ServerThread sender, String message) {
+        String senderLabel = sender == null ? "Server" : String.format("User[%s]", sender.getClientId());
+        final String formatted = String.format("%s: %s", senderLabel, message);
+        connectedClients.values().removeIf(serverThread -> !serverThread.sendToClient(formatted));
+    }
+
+    // handle* methods are the interface ServerThread uses to trigger Server actions
+
+    /**
+     * Called when a client requests to disconnect. Delegates to disconnect().
+     */
+    protected synchronized void handleDisconnect(ServerThread sender) {
+        disconnect(sender);
+    }
+
+    /**
+     * Sends the connected user list only to the requesting client.
+     * The requester's entry is tagged with "(you)".
+     */
+    protected synchronized void handleGetUserList(ServerThread serverThread) {
+        StringBuilder sb = new StringBuilder("Connected users:\n");
+        connectedClients.forEach((id, st) -> {
+            if (id == serverThread.getClientId()) {
+                sb.append(String.format("  User[%s] (you)\n", id));
+            } else {
+                sb.append(String.format("  User[%s]\n", id));
+            }
+        });
+        serverThread.sendToClient(sb.toString().trim());
+    }
+
+    /** Reverses the text and broadcasts the result. */
+    protected synchronized void handleReverseText(ServerThread sender, String text) {
+        StringBuilder sb = new StringBuilder(text);
+        sb.reverse();
+        broadcast(sender, sb.toString());
+    }
+
+    /** Broadcasts a chat message from the sender to all clients. */
+    protected synchronized void handleMessage(ServerThread sender, String text) {
+        broadcast(sender, text);
+    }
+
+     /** Flips a coin and broadcasts the result. */
+    protected synchronized void handleFlip(ServerThread sender) {
+        String result = Math.random() < 0.5 ? "Heads" : "Tails";
+        
+        String message = String.format("User[%s] flipped a coin: %s", sender.getClientId(), result);
+        
+        broadcast(null, message);
+
+    }
+
+    protected synchronized void handlePrivateMessage(ServerThread sender, long targetId, String message) {
+        ServerThread target = connectedClients.get(targetId);
+
+        if (target == null) {
+            sender.sendToClient("User[" + targetId + "] is not connected");
+            return;
+        }
+
+        String formatted = String.format ("PM from User[%s]: %s", sender.getClientId(), message);
+
+        sender.sendToClient(formatted);
+
+        if (target != sender) {
+            target.sendToClient(formatted);
+        }
+        
+    }
+
+    protected synchronized void handleShuffle(ServerThread sender, String message) { 
+        List<Character> characters = new ArrayList<>();
+
+        for (char c : message.toCharArray()) {
+            characters.add(c);
+        }
+
+        Collections.shuffle(characters);
+
+        StringBuilder shuffled = new StringBuilder();
+
+        for (char c : characters) {
+            shuffled.append(c);
+        }
+
+        String result = String.format( "Shuffled from User[%s] message: %s", sender.getClientId(), shuffled.toString());
+
+        broadcast(null, result);
+
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Server Starting");
+        Server server = new Server();
+        int port = 3000;
+        try {
+            port = Integer.parseInt(args[0]);
+        } catch (Exception e) {
+            // use default port
+        }
+        server.start(port);
+        System.out.println("Server Stopped");
+    }
+}
