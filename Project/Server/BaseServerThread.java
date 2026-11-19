@@ -1,12 +1,15 @@
 package Project.Server;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 
-import java.net.*;
-
-import Project.Common.*;
-
+import Project.Common.Payload;
+import Project.Common.TextFX;
 import Project.Common.TextFX.Color;
+import Project.Common.User;
+import Project.Common.Constants;
 
 /**
  * Base class the handles the underlying connection between Client and
@@ -61,6 +64,47 @@ public abstract class BaseServerThread extends Thread {
 
     public String getDisplayName() {
         return this.user.getDisplayName();
+    }
+
+    public boolean isReady() {
+        return this.user.isReady();
+    }
+
+    public void setReady(boolean ready) {
+        this.user.setReady(ready);
+    }
+
+    public boolean isTurnTaken() {
+        return this.user.isTurnTaken();
+    }
+
+    public void setTurnTaken(boolean turnTaken) {
+        this.user.setTurnTaken(turnTaken);
+    }
+
+    // exposure of example user data
+    public int getGuess() {
+        return this.user.getGuess();
+    }
+
+    public void setGuess(int guess) {
+        this.user.setGuess(guess);
+    }
+
+    public int getPoints() {
+        return this.user.getPoints();
+    }
+
+    public void setPoints(int points) {
+        this.user.setPoints(points);
+    }
+
+    /**
+     * Resets the game state for this player. <br>
+     * Retains clientId/clientName references.
+     */
+    public void resetGameState() {
+        this.user.resetGameState();
     }
 
     /**
