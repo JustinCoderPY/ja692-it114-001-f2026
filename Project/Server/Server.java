@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import Project.Common.LoggerUtil;
@@ -92,6 +93,23 @@ public enum Server {
             LoggerUtil.INSTANCE.severe("Game server handleGuess failed", e);
         }
     }
+    /**
+     * JA - 11/20/2026
+     * Passes Hangman letter guess to GameServer.
+     */
+
+    protected synchronized void handleLetter(ServerThread sender, String letter) {
+        if(!isGameServerActive()) {
+            return;
+        }
+        try {
+            gameServer.handleLetter(sender, letter);
+
+        } catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("Game server handleLetter has failed", e);
+        }
+    }
+
 
     /**
      * Passes user's turn action to the game session

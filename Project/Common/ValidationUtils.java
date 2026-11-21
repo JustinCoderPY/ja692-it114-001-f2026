@@ -140,20 +140,27 @@ public final class ValidationUtils {
         return requireValidTurnOption(value, DEFAULT_TURN_OPTION_MESSAGE);
     }
 
+    /**
+     * JA - 11/20/2026
+     * Sees that a Hangman guess contains only letters.
+     */
+
     public static String requireValidTurnOption(String value, String errorMessage)
             throws InvalidTurnOptionException {
         String normalized = value == null ? "" : value.trim().toLowerCase();
 
-        // example validation for example game
-        // requires a number between 1 and 10 (inclusive)
-        try {
-            int guess = Integer.parseInt(normalized);
-            if (guess < 1 || guess > 10) {
-                throw new InvalidTurnOptionException("Please enter a number between 1 and 10.");
-            }
-        } catch (NumberFormatException e) {
-            throw new InvalidTurnOptionException("Please enter a valid number.");
+
+        //JA 11/20/26- Does not allow for blank guesses & only allows alphabetic characters
+
+        if (normalized.isEmpty()) {
+            throw new InvalidTurnOptionException("No... please enter a letter or word please.");
         }
-        return normalized;
+
+        if (!normalized.matches("[a-z]+")) {
+            throw new InvalidTurnOptionException ("Not even a letter... pick only letters!");
+        }
+
+        return normalized; 
+
     }
 }

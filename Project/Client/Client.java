@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 import Project.Common.Constants;
 import Project.Common.ConnectionPayload;
+import Project.Client.Command;
 import Project.Common.BoolPayload;
 import Project.Common.LoggerUtil;
 import Project.Common.Payload;
@@ -185,6 +186,10 @@ public enum Client {
                 String guessText = text.replaceFirst("/guess", "").trim();
                 sendGuess(guessText);
                 return true;
+            case LETTER:
+                String letterText = text.replaceFirst("/letter", "").trim();
+                sendLetter(letterText);
+                return true;
             default:
                 return false;
         }
@@ -218,6 +223,40 @@ public enum Client {
         payload.setMessage(validatedTurnAction);
         sendToServer(payload);
     }
+
+    /**
+     * JA - 11/20/2026
+     * Sends a single  letter to the server, Hangman.
+     */
+
+    private void sendLetter(String action) throws IOException {
+        String letter = action == null ? "" : action.trim();
+
+        if (isLocalValidationEnabled) {
+            try {
+                ValidationUtils.requirePhase(currentGamePhase, Phase.IN_PROGRESS);
+                ValidationUtils.requireParticipating(myUser.isReady());
+                ValidationUtils.requireTurnNotTaken(myUser.isTurnTaken());
+                letter = ValidationUtils.requireValidTurnOption(letter);
+
+                if (letter.length() != 1) {
+                    LoggerUtil.INSTANCE.warning("Please enter a single letter for Hangman... it's easier that way!");
+                    return;
+                }
+            } catch (ValidationException e) {
+                LoggerUtil.INSTANCE.warning(TextFX.colorize(e.getMessage(), Color.YELLOW));
+                return;
+            }
+            
+        }
+
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.LETTER);
+        payload.setMessage(letter);
+        sendToServer(payload);
+    }
+
+
 
     /**
      * Sends a ready-check action to the server.
@@ -536,10 +575,30 @@ public enum Client {
      * 
      * @param payload
      */
+    
+    /**
+     * JA - 11/20/2026
+     * Displays game messages without the logging prefix.
+     * Keeps regular chat messages using the original logger.
+     */
     private void processMessage(Payload payload) {
-        // regular chat message from another client; just print it
-        LoggerUtil.INSTANCE.info(TextFX.colorize(payload.getMessage(), Color.BLUE));
+        String message = payload.getMessage();
+
+        if (message == null) {
+            return;
+        }
+
+        // JA - Display Hangman messages without timestamps
+        if (message.contains("[Game]")) {
+            System.out.println();
+            System.out.println(message);
+        } else {
+            // Keep the original chat formatting
+            LoggerUtil.INSTANCE.info(
+                TextFX.colorize(message, Color.BLUE));
+        }
     }
+
 
     /**
      * Processes SERVER_JOIN, SERVER_LEAVE, and SERVER_SYNC payloads, which all

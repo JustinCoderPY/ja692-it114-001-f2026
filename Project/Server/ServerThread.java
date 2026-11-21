@@ -73,6 +73,9 @@ public class ServerThread extends BaseServerThread {
             case GUESS:
                 processGuess(incoming);
                 break;
+            case LETTER:
+                processLetter(incoming);
+                break;
             default:
                 info("Received unsupported payload type: " + incoming.getPayloadType());
         }
@@ -84,6 +87,17 @@ public class ServerThread extends BaseServerThread {
         info("Processing guess payload");
         Server.INSTANCE.handleGuess(this, incoming.getMessage());
     }
+
+    /**
+     * JA - 11/20/2026
+     * Passes a letter guess to the server.
+     */
+
+    private void processLetter(Payload incoming) {
+        info("Processing letter payload");
+        Server.INSTANCE.handleLetter(this, incoming.getMessage());
+    }
+
 
     private void processTurn(Payload incoming) {
         info("Processing turn payload");

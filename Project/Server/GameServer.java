@@ -3,6 +3,12 @@ package Project.Server;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path; 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Collections;
 
 import Project.Common.Constants;
 import Project.Common.LoggerUtil;
@@ -10,6 +16,7 @@ import Project.Common.Phase;
 import Project.Common.TimedEvent;
 import Project.Common.ValidationUtils;
 import Project.Exceptions.ValidationException;
+
 
 /**
  * Concrete game session scaffold based on the old GameRoom lifecycle.
@@ -23,6 +30,7 @@ public class GameServer extends BaseGameServer {
     private static final int MIN_PLAYERS_TO_START = 2;
     private static final int READY_SECONDS = 30;
     private static final int ROUND_SECONDS = 30;
+    private static final int MAX_ROUNDS = 3;
     private static final int TURN_SECONDS = 20;
     private static final String GAME_TAG = "[Game] ";
 
@@ -32,8 +40,41 @@ public class GameServer extends BaseGameServer {
     private volatile TimedEvent turnTimer;
     private volatile Long currentTurnPlayerId;
     private int roundNumber = 0;
-    // example data
-    private int hiddenNumber = 0;
+
+    /**JA - 11/19/2026: Stores the Hangman words and guessing info. */
+    private List <String> words = new ArrayList<>();
+    private String hiddenWord = "";
+    private String visibleWord = "";
+    private Set <Character> guessedLetters = new HashSet<>();
+    private int tries = 0; 
+    private List<Long> turnOrder = new ArrayList<>();
+    private static final int MAX_TRIES = 6; 
+    private boolean wordFinished = false; 
+
+    /** JA- 11/19/26: Loads Hangman words based on the word.txt file */
+
+    private void loadWords() {
+        words.clear();
+
+        try {
+            List<String> lines = Files.readAllLines(Path.of("Project/Server/words.txt"));
+
+            for (String line : lines) {
+                String word = line.trim().toLowerCase();
+
+                if (word.matches("[a-z]+")) {
+                    words.add(word);
+                }
+            }
+            if (words.size() < 5) { 
+                throw new IllegalStateException("You need at least 5 words for this game");
+            }
+
+            LoggerUtil.INSTANCE.info("[Game] Loaded" + words.size() + "words. ");
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not load Hangman words");
+        }
+    }
 
     // start region for lifecycle hook implementations
     @Override
@@ -85,119 +126,226 @@ public class GameServer extends BaseGameServer {
         }
     }
 
+    /**    
+     * JA- 11/19/26
+     * Starts a Hangman sessions and gets everything set up for the first word
+     */
+
     @Override
     protected synchronized void onSessionStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() start");
         resetReadyTimer();
         roundNumber = 0;
-        broadcastGameMessage("Session started.");
+        wordFinished = false;
+        
+        //JA- Adding the load for the word list
+        loadWords();
+
+        //JA- Picks a random hidden word
+        hiddenWord = words.get (new Random().nextInt(words.size()));
+
+        //JA- Creates that underline design to show the blank letter
+        visibleWord = "_".repeat(hiddenWord.length());
+
+        //JA - Resets your tries and guessed letters too
+        tries = 0;
+        guessedLetters.clear();
+
+        //JA- resets users scores
+        for (ServerThread player : getActivePlayers()) {
+            player.setPoints(0);
+            broadcastPlayerPoints(player);
+        }
+
+        //JA- Changed Messages
+        broadcastGameMessage("Time to Play Some Hangman!");
+        broadcastGameMessage("The word for today: " + visibleWord);
+        broadcastGameMessage("Attempts: " + tries + "/" + MAX_TRIES);
+
+        //JA- 11/19/26- Give users turns to play
+        turnOrder.clear();
+        for (ServerThread player : getActivePlayers()) {
+            turnOrder.add(player.getClientId());
+        }
+
+        Collections.sort(turnOrder);
+        Collections.shuffle(turnOrder);
+
+        broadcastGameMessage("PLayer turn order has been selected");
+        
         LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() end");
         onRoundStart();
     }
+
+    /**
+     * JA - 11/19/2026
+     * Starts a new Hangman round and resets player turns.
+     */
 
     @Override
     protected synchronized void onRoundStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() start");
         resetRoundTimer();
-        startRoundTimer();
         phase = Phase.IN_PROGRESS; // toggle from READY or EVALUATION
         broadcastCurrentPhase();
+       
+       
         for (ServerThread player : getActivePlayers()) {
             player.setTurnTaken(false);
             broadcastTurnStatus(player.getClientId(), false);
         }
-        roundNumber++; // TODO: future lessons may sync this as number later for better UI visibility
-        broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
-        // example round setup
-        hiddenNumber = new Random().nextInt(10) + 1;
-        broadcastGameMessage("A random number between 1-10 has been chosen, use /guess <value> to guess.");
+
+        //JA 11/19/26- Helps with the next rounds
+        roundNumber++; 
+       
+        broadcastGameMessage("Hangman: Round " + roundNumber + " has started!");
+
+        if (!wordFinished) {
+            broadcastGameMessage("Your word for the day:" + visibleWord);
+            broadcastGameMessage("Attempts: " + tries + "/" + MAX_TRIES);
+        }
 
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
-        // onTurnStart(); this example doesn't use turns, all players take their
-        // turn simultaneously within the round time limit
+        
+       //JA- 11/19/26- Needed so that the first player can take their turn
+        onTurnStart();  
+        
     }
+
+    /**
+     * JA - 11/19/2026
+     * Starts next turn for Player when playing Hangman
+     */
 
     @Override
     protected synchronized void onTurnStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
         resetTurnTimer();
 
-        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        if (snapshot.isEmpty()) {
-            onSessionEnd();
+        if (phase != Phase.IN_PROGRESS) {
             return;
         }
-        // TODO: pick next player (covered in a future lesson, below is a temporary
-        // scaffold that just picks the first active player)
-        ServerThread chosen = snapshot.get(0); // simple scaffold: first active player
-        currentTurnPlayerId = chosen.getClientId();
 
-        startTurnTimer();
-        broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within "
-                + TURN_SECONDS + "s.");
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
+        //JA- 11/19/26 -Sees player who has not taken turn yet
+        for (Long playerId : turnOrder) {
+            ServerThread player = activePlayers.get(playerId);
+
+            if ( player != null && !player.isTurnTaken()) {
+                currentTurnPlayerId = player.getClientId();
+
+                if (wordFinished) {
+                    startNewWord();
+                }
+
+                broadcastGameMessage("It's " + player.getDisplayName() + "'s turn to guess a letter.");
+                broadcastGameMessage("USer /letter <letter> or /guess <word> to see if you can guess the word.");
+                startTurnTimer();
+
+                LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
+                return;
+            }
+        }
+        //JA 11/19/26- Once they get all turns, round ends
+        onRoundEnd();
+
     }
 
     @Override
     protected synchronized void onTurnEnd() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() start");
-        resetTurnTimer();
-        currentTurnPlayerId = null;
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() end");
-        // onRoundEnd(); this example doesn't use turns, but this hook is called at the
-        // end of handleTurn() and we don't want it to end the round
-
-        // if all players have taken their turn, enter onRoundEnd() early instead of
-        // waiting for the turn timer to expire
-        boolean allTaken = getActivePlayers().stream().allMatch(ServerThread::isTurnTaken);
-        if (allTaken) {
-            // NOTE: be careful to not have two closely timed flows both call onRoundEnd()
-            // simultaneously
-            onRoundEnd();
+        
+        if (phase != Phase.IN_PROGRESS || currentTurnPlayerId == null) {
+            return;
         }
+
+        resetTurnTimer();
+
+        //JA- 11/19/26 - Sees who is the last player whose turn just ended
+        ServerThread player = activePlayers.get(currentTurnPlayerId);
+
+        if (player != null && !player.isTurnTaken()) {
+            player.setTurnTaken(true);
+            broadcastTurnStatus(player.getClientId(), true);
+
+            broadcastGameMessage(player.getDisplayName() + "'s turn has ended.");
+        }
+
+        currentTurnPlayerId = null;
+
+        //JA 11/19/26- Checks to see if everyone finished their turns
+        boolean allTaken = true; 
+
+        for (ServerThread activePlayer : getActivePlayers()) {
+            if (!activePlayer.isTurnTaken()) {
+                allTaken = false;
+                break;
+            }
+        }
+
+        LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() end");
+        if( allTaken) {
+            onRoundEnd();
+        } else {
+            onTurnStart();
+        }
+
     }
+    
+    /**
+     * JA - 11/19/2026
+     * Ends a Hangman round and shows score, so that it can
+     * starts the next round or finishes the session.
+     */
 
     @Override
     protected synchronized void onRoundEnd() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() start");
-        // prevent potential multiple calls to onRoundEnd() from both turn timer
-        // expiring and all players taking their turn
-        if (phase == Phase.EVALUATION) {
-            LoggerUtil.INSTANCE.info("[GameServer] Already in evaluation phase, skipping redundant onRoundEnd() call");
+
+        //JA 11/19/26- Do not let round from ending more than once
+
+        if (phase != Phase.IN_PROGRESS) {
             return;
         }
+
         phase = Phase.EVALUATION;
         broadcastCurrentPhase();
-        resetRoundTimer();
-        broadcastGameMessage("Round ended.");
 
-        // example process round end logic; everyone gains a point for a correct guess
-        broadcastGameMessage("Evaluating guesses... The correct number was " + hiddenNumber);
-        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        for (ServerThread player : snapshot) {
-            if (player.getGuess() == hiddenNumber) {
-                player.setPoints(player.getPoints() + 1);
-                // sync points to all
-                broadcastPlayerPoints(player);
-                // feedback
-                broadcastGameMessage(
-                        String.format("%s guessed correctly and gained a point!", player.getDisplayName()));
-                // can reset guess here
-                player.setGuess(0);
-            } else {
-                unicastGameMessage(player, "Your guess was incorrect.");
+        resetRoundTimer();
+        resetTurnTimer();
+        currentTurnPlayerId = null;
+
+        broadcastGameMessage("Round " + roundNumber + " has ended!");
+
+        //JA 11/19/26 - Organize winners and get their names
+
+        List<ServerThread> players = new ArrayList<>(getActivePlayers());
+        players.sort((p1, p2) -> { 
+            int result = Integer.compare(p2.getPoints(), p1.getPoints());
+
+            if (result != 0) {
+                return result;
             }
+
+            return Long.compare(p1.getClientId(), p2.getClientId());
+        });
+
+        broadcastGameMessage("-----Scoreboard-----");
+
+        for (ServerThread player : players) {
+            broadcastGameMessage(player.getDisplayName() + ": " + player.getPoints() + " points");
         }
 
-        LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
-        // TODO: add logic to determine if session should end or next round should
+        broadcastGameMessage("--------------------");
 
-        if (roundNumber >= 5) { // arbitrary end condition for example purposes
+        LoggerUtil.INSTANCE.info("GameServer onRoundEnd() end");
+
+        //JA 11/19/26- Sees whether all rounds have finished
+        if (roundNumber >= MAX_ROUNDS) {
             onSessionEnd();
         } else {
             onRoundStart();
         }
-        // onSessionEnd();
+
     }
 
     @Override
@@ -206,18 +354,49 @@ public class GameServer extends BaseGameServer {
         resetReadyTimer();
         resetTurnTimer();
         resetRoundTimer();
+        wordFinished = false;
 
         currentTurnPlayerId = null;
         phase = Phase.INACTIVE;
 
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
         // find user with highest score; they're the winner (uses stream api)
-        snapshot.stream().max((p1, p2) -> Integer.compare(p1.getPoints(), p2.getPoints())).ifPresentOrElse(winner -> {
-            broadcastGameMessage(String.format("Session ended: %s wins with %d points!", winner.getDisplayName(),
-                    winner.getPoints()));
-        }, () -> {
-            broadcastGameMessage("Session ended with no winner.");
-        });
+        snapshot.sort((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()));
+
+        broadcastGameMessage("~~~~~ Final RESULTS ~~~~~");
+        for (ServerThread player : snapshot) {
+            broadcastGameMessage(player.getDisplayName() + ": " + player.getPoints() + " points");
+        }
+        broadcastGameMessage("~~~~~~~~~~~~~~~~~~~~~~~");
+
+        //JA 11/19/26- Shows who won the game 
+        if (snapshot.isEmpty()) { 
+            broadcastGameMessage("No player has won the game.");
+
+        } else { 
+            int highestScore = snapshot.get(0).getPoints();
+            List<String> winners = new ArrayList<>();
+
+            for (ServerThread player :snapshot) {
+                if (player.getPoints() == highestScore) {
+                    winners.add(player.getDisplayName());
+                }
+            }
+
+            if (winners.size() == 1) {
+                broadcastGameMessage(winners.get(0) + " won with " + highestScore + " points!");
+            } else {
+                broadcastGameMessage("A tie! Between " + String.join(", ", winners) + " with " + highestScore + " points!");
+            }
+        }
+
+        //JA 11/20/26
+        hiddenWord = "";
+        visibleWord = "";
+        guessedLetters.clear();
+        tries = 0;
+        turnOrder.clear();
+        roundNumber = 0; 
 
         // reset player data and sync changes to clients before clearing active players,
         // so that clients have a chance to update any relevant UI (like ready status)
@@ -299,43 +478,155 @@ public class GameServer extends BaseGameServer {
 
     // start region for handle*() methods called by Server
 
-    protected void handleGuess(ServerThread sender, String guess) {
+    protected void handleGuess(ServerThread sender, String letter) {
         try {
             ValidationUtils.requireParticipating(isActivePlayer(sender));
             ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
-            guess = ValidationUtils.requireValidTurnOption(guess.trim());
-            // although validation should verify it's a number, I'll see do a try/catch just
-            // in case
-            // that way if I mistakenly change requireValidTurnOption() in the future and it
-            // stops validating properly, I have a fallback to prevent server crashes from
-            // NumberFormatException
-            try {
-                int guessValue = Integer.parseInt(guess);
-                // record server local state (used in round end)
-                sender.setGuess(guessValue);
-                // unicast guess to player for confirmation
-                unicastGuessConfirmation(sender, guessValue);
-                // NOTE: we won't evaluate here, we'll do it during onRoundEnd()
-            } catch (NumberFormatException e) {
-                LoggerUtil.INSTANCE.warning("[GameServer] Failed to parse turn action as number: " + guess);
-                unicastGameMessage(sender,
-                        "Failed to parse your guess as a number. Please enter a valid number between 1 and 10.");
+            ValidationUtils.requireTurnNotTaken(sender.isTurnTaken());
+            ValidationUtils.requireCurrentPlayer(currentTurnPlayerId, sender.getClientId());
+
+            //JA 11/20/26 -Check if input within alphabet
+
+            String word = ValidationUtils.requireValidTurnOption(letter);
+
+            if (wordFinished) {
+                unicastGameMessage(sender, "The word has been completed.");
                 return;
             }
 
-            // keep the guess hidden from other players in this example
-            broadcastGameMessage(sender.getDisplayName() + " made a guess.");
-            // Note: technically if your action has data, turnTaken can be derived by
-            // whether or not data was recorded, but I'll keep it as a separate property for
-            // simplicity and flexibility. In a fuller project, deriving information is more
-            // efficient
-            sender.setTurnTaken(true);
-            broadcastTurnStatus(sender.getClientId(), true);
+            //JA 11/20/26- Counts to see what letters are hidden still & rewards per find + bonus
+            if(word.equals(hiddenWord)) {
+                int missingLetters = 0; 
+
+                for (int i = 0; i < visibleWord.length(); i++) {
+                    if (visibleWord.charAt(i) == '_') {
+                        missingLetters++;
+                    }
+                }
+
+                int pointsEarned = missingLetters + (missingLetters * 2); 
+
+                sender.setPoints(sender.getPoints() + pointsEarned);
+                broadcastPlayerPoints(sender); 
+
+                visibleWord = hiddenWord;
+                wordFinished = true;
+
+                broadcastGameMessage(sender.getDisplayName() + " has found the word : " + hiddenWord);
+                broadcastGameMessage("Points earned: " + pointsEarned);
+                broadcastGameMessage("The word was: " + visibleWord);
+
+            } else { 
+                //JA 11/20/26 - Getting wrong letter gets you a retry + a warning
+
+                tries++; 
+
+                broadcastGameMessage(sender.getDisplayName() + " guessed " + word + " incorrectly... shame on you.");
+                broadcastGameMessage("Attempts: " + tries + "/" + MAX_TRIES);
+
+                if (tries >= MAX_TRIES) { 
+                    wordFinished = true;
+                    broadcastGameMessage("You ran out of tries... no more.");
+                    broadcastGameMessage("The word was: " + hiddenWord);
+
+                }
+            }
+
             onTurnEnd();
+
+
         } catch (ValidationException e) {
             LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
             unicastGameMessage(sender, e.getMessage());
         }
+
+    }
+
+    /**
+     * JA - 11/20/2026
+     * Checks a letter and updates it.
+     */
+    
+    protected void handleLetter(ServerThread sender, String letter) { 
+        try {
+            ValidationUtils.requireParticipating(isActivePlayer(sender));
+            ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
+            ValidationUtils.requireTurnNotTaken(sender.isTurnTaken());
+            ValidationUtils.requireCurrentPlayer(currentTurnPlayerId, sender.getClientId());
+            String input = ValidationUtils.requireValidTurnOption(letter);
+
+            if (input.length() != 1) { 
+                unicastGameMessage(sender, "Please just put in ONE letter.");
+                return;
+            }
+
+            char guessedLetter = input.charAt(0);
+
+            //JA 11/20/26 - Letters should only be used once, so reject already attempted ones
+            if (guessedLetters.contains(guessedLetter)) {
+                unicastGameMessage(sender, "You already guessed this letter, you bum.");
+                return;
+            }
+
+            guessedLetters.add(guessedLetter);
+
+            char[] updatedWord = visibleWord.toCharArray();
+            int matches = 0;
+
+            //JA 11/20/26- Once guessed right, letter gets revealed
+
+            for (int i = 0; i < hiddenWord.length(); i++) {
+                if (hiddenWord.charAt(i) == guessedLetter && updatedWord[i] == '_') {
+                    updatedWord[i] = guessedLetter;
+                    matches++;
+                }
+            }
+
+            if (matches > 0) {
+                visibleWord = new String(updatedWord);
+                sender.setPoints(sender.getPoints() + matches);
+                broadcastPlayerPoints(sender);
+
+                broadcastGameMessage(sender.getDisplayName() + " has guessed the letter '" + guessedLetter + "' correctly!");
+                broadcastGameMessage("Found " + matches + " new letter(s)"); 
+                broadcastGameMessage("You earned: " + matches + " points. Well Done!");
+                broadcastGameMessage("The word: " + visibleWord);
+
+                if (!visibleWord.contains("_")) {
+                    wordFinished = true;
+                    broadcastGameMessage("Congrats! You finished the word: " + hiddenWord);
+                }
+            } else { 
+                tries++; 
+
+                broadcastGameMessage(sender.getDisplayName() + " guessed " + guessedLetter + " incorrectly, shame... shame.");
+                broadcastGameMessage("Attempts: " + tries + "/" + MAX_TRIES);
+
+                if (tries >= MAX_TRIES) {
+                    wordFinished = true;
+                    broadcastGameMessage("The word was: " + hiddenWord + " you ran out you bum.");
+                }
+            }
+
+            onTurnEnd();
+
+        } catch (ValidationException e) {
+            LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
+            unicastGameMessage(sender, e.getMessage());
+        }
+    }
+
+    private void startNewWord() { 
+        hiddenWord = words.get(new Random().nextInt(words.size()));
+        visibleWord = "_".repeat(hiddenWord.length());
+
+        tries = 0;
+        guessedLetters.clear();
+        wordFinished = false;
+
+        broadcastGameMessage("Time for the new word!");
+        broadcastGameMessage("The word is: " + visibleWord);
+        broadcastGameMessage("Attempts: " + tries + "/" + MAX_TRIES);
     }
 
     /**
@@ -431,7 +722,9 @@ public class GameServer extends BaseGameServer {
             return;
         }
         unicastCurrentPhase(joiner);
+
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
+        
         for (ServerThread player : snapshot) {
             if (player.getClientId() == joiner.getClientId()) {
                 continue;
@@ -440,6 +733,25 @@ public class GameServer extends BaseGameServer {
             unicastTurnStatus(joiner, player.getClientId(), player.isTurnTaken());
             unicastPlayerPoints(joiner, player.getClientId(), player.getPoints());
         }
+
+        //JA 11/20/26- Gives later joiners the ability to see the current word and attempts
+
+        if (phase == Phase.IN_PROGRESS || phase == Phase.EVALUATION) {
+            unicastGameMessage(joiner, "===== Current GamePlay =====");
+            unicastGameMessage(joiner, "Round: " + roundNumber + "/" + MAX_ROUNDS);
+            unicastGameMessage(joiner, "Word: " + visibleWord);
+            unicastGameMessage(joiner, "Attempts: " + tries + "/" + MAX_TRIES);
+        }
+
+        if (currentTurnPlayerId != null) {
+            ServerThread currentPlayer = activePlayers.get(currentTurnPlayerId);
+            if (currentPlayer != null) {
+                unicastGameMessage(joiner, "Current turn: " + currentPlayer.getDisplayName());
+            }
+        }
+
+        unicastGameMessage(joiner, "You are spectating the game.");
+        unicastGameMessage(joiner, "============================");
     }
 
     /** Sends the current game phase to all connected clients. */
